@@ -1,0 +1,33 @@
+## NoteReader – Indian Currency Speaker
+## Python dependencies (tested on Python 3.10)
+## Install: pip install -r requirements.txt
+
+# Core ML
+tensorflow==2.15.0
+keras==2.15.0
+scikit-learn==1.4.2
+numpy==1.26.4
+pandas==2.2.2
+
+# Image processing
+opencv-python==4.9.0.80
+Pillow==10.3.0
+albumentations==1.4.7
+
+# Visualisation
+matplotlib==3.9.0
+seaborn==0.13.2
+
+# Dataset download
+kaggle==1.6.14
+
+# Notebook environment
+jupyter==1.0.0
+ipykernel==6.29.4
+ipywidgets==8.1.2
+
+# TFLite utilities
+flatbuffers==23.5.26
+
+# Misc
+tqdm==4.66.4

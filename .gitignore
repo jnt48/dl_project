@@ -1,0 +1,61 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Data and large assets (recreated via scripts)
+data/
+dataset/
+assets/
+*.zip
+*.tar.gz
+
+# Heavy model binary checkpoints (>50MB)
+models/*.pth
+models/*.h5
+!models/model_config.json
+
+# Node & Expo
+node_modules/
+*/node_modules/
+.expo/
+*/.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Certificates and keys
+*.pem
+*.key
+
+# Logs
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

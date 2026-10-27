@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "NoteReader",
+    "slug": "notereader-currency",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "in.rcoem.notereader",
+      "infoPlist": {
+        "NSCameraUsageDescription": "NoteReader uses the camera to identify Indian currency notes for visually impaired users.",
+        "NSSpeechRecognitionUsageDescription": "NoteReader uses text-to-speech to announce the denomination aloud."
+      }
+    },
+    "android": {
+      "package": "in.rcoem.notereader",
+      "permissions": [
+        "CAMERA",
+        "VIBRATE",
+        "READ_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#000000",
+        "foregroundImage": "./assets/android-icon-foreground.png"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "NoteReader needs camera access to identify Indian currency notes for visually impaired users."
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "NoteReader needs camera access to scan currency notes.",
+          "enableMicrophonePermission": false
+        }
+      ]
+    ],
+    "assetBundlePatterns": [
+      "assets/**",
+      "assets/model/**"
+    ]
+  }
+}

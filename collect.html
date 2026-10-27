@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>NoteReader Burst Collector</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card: #131c2e;
+      --card-border: #1e293b;
+      --accent: #f59e0b;
+      --accent-hover: #d97706;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+      --danger: #ef4444;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+      padding-bottom: 60px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    header {
+      text-align: center;
+      padding: 8px 0;
+    }
+    h1 { font-size: 1.4rem; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+    .subtitle { font-size: 0.85rem; color: var(--text-muted); margin-top: 2px; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+    }
+
+    /* Session Mode Toggle */
+    .session-toggle {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: #0b1120;
+      padding: 4px;
+      border-radius: 8px;
+    }
+    .session-btn {
+      padding: 10px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-weight: 700;
+      font-size: 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .session-btn.active.train {
+      background: #1e3a8a;
+      color: #93c5fd;
+      border: 1px solid #3b82f6;
+    }
+    .session-btn.active.test {
+      background: #701a75;
+      color: #f5d0fe;
+      border: 1px solid #d946ef;
+    }
+    .session-info {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: #334155;
+      color: #cbd5e1;
+    }
+
+    /* Denomination Selector Grid */
+    .denom-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .denom-btn {
+      padding: 12px 6px;
+      border: 2px solid #27354a;
+      background: #0f172a;
+      color: var(--text);
+      font-size: 1rem;
+      font-weight: 800;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .denom-btn.active {
+      border-color: var(--accent);
+      background: #3b2a05;
+      color: var(--accent);
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+      transform: scale(1.02);
+    }
+    .denom-btn.not-note {
+      grid-column: span 4;
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: #1e293b;
+      border-color: #334155;
+      color: #cbd5e1;
+    }
+    .denom-btn.not-note.active {
+      border-color: #e2e8f0;
+      background: #475569;
+      color: #ffffff;
+    }
+
+    /* Camera Viewfinder */
+    .viewfinder-container {
+      position: relative;
+      width: 100%;
+      height: 280px;
+      background: #000;
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #334155;
+    }
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .viewfinder-guide {
+      position: absolute;
+      top: 15%;
+      left: 10%;
+      right: 10%;
+      bottom: 15%;
+      border: 2px dashed rgba(245, 158, 11, 0.7);
+      border-radius: 8px;
+      pointer-events: none;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4);
+    }
+    .guide-label {
+      position: absolute;
+      bottom: 6px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 0.7rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .flash-overlay {
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.08s ease-out;
+    }
+
+    /* Capture Action Button */
+    .capture-btn {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      font-size: 1.15rem;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
+      transition: all 0.2s;
+    }
+    .capture-btn:disabled {
+      background: #475569;
+      color: #94a3b8;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .capture-btn:active:not(:disabled) {
+      transform: scale(0.97);
+    }
+
+    /* Condition Tag Selectors */
+    .tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tag-chip {
+      padding: 5px 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #cbd5e1;
+      border-radius: 16px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tag-chip.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Progress & Filmstrip */
+    .filmstrip {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 6px 0;
+    }
+    .thumb {
+      width: 60px;
+      height: 60px;
+      border-radius: 6px;
+      object-fit: cover;
+      border: 1px solid #475569;
+      flex-shrink: 0;
+    }
+
+    /* Protocol Accordion */
+    details {
+      background: #0d1524;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 0.85rem;
+    }
+    summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .protocol-content {
+      margin-top: 10px;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .protocol-content ul {
+      margin-left: 20px;
+      margin-top: 6px;
+    }
+
+    /* Stats Table */
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+    }
+    .stats-table th, .stats-table td {
+      padding: 6px;
+      text-align: left;
+      border-bottom: 1px solid #1e293b;
+    }
+    .stats-table th { color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>NoteReader Burst Collector</h1>
+    <p class="subtitle">Target: 40+ photos per class in 2 separate sessions</p>
+  </header>
+
+  <!-- 1. Session Mode Selection -->
+  <div class="card">
+    <div class="card-title">1. Target Split & Session</div>
+    <div class="session-toggle">
+      <button class="session-btn train active" onclick="setSessionType('train')">
+        Session A (TRAINING)
+      </button>
+      <button class="session-btn test" onclick="setSessionType('test')">
+        Session B (HELD-OUT TEST)
+      </button>
+    </div>
+    <div class="session-info">
+      <span>Session ID: <strong id="sessionIdLabel" style="color:var(--accent);">SES_A_001</strong></span>
+      <button class="badge" onclick="newSessionId()">New Session ID</button>
+    </div>
+  </div>
+
+  <!-- 2. Denomination Selection -->
+  <div class="card">
+    <div class="card-title">2. Select Denomination to Capture</div>
+    <div class="denom-grid">
+      <button class="denom-btn" onclick="selectDenom('10')">₹10</button>
+      <button class="denom-btn" onclick="selectDenom('20')">₹20</button>
+      <button class="denom-btn" onclick="selectDenom('50')">₹50</button>
+      <button class="denom-btn active" onclick="selectDenom('100')">₹100</button>
+      <button class="denom-btn" onclick="selectDenom('200')">₹200</button>
+      <button class="denom-btn" onclick="selectDenom('500')">₹500</button>
+      <button class="denom-btn" onclick="selectDenom('2000')">₹2000</button>
+      <button class="denom-btn not-note" onclick="selectDenom('not_a_note')">
+        🚫 not_a_note (Desks, Hands, Paper, Room)
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. Current Capture Context / Tags -->
+  <div class="card">
+    <div class="card-title">3. Capture Conditions (For Manifest)</div>
+    <div class="tags-row" id="lightTags">
+      <span class="tag-chip active" onclick="toggleTag(this)">Daylight</span>
+      <span class="tag-chip" onclick="toggleTag(this)">Room Light</span>
+      <span class="tag-chip" onclick="toggleTag(this)">Dim Light</span>
+    </div>
+    <div class="tags-row" id="bgTags">
+      <span class="tag-chip active" onclick="toggleTag(this)">Table</span>
+      <span class="tag-chip" onclick="toggleTag(this)">Bedsheet</span>
+      <span class="tag-chip" onclick="toggleTag(this)">In Hand</span>
+    </div>
+    <div class="tags-row" id="stateTags">
+      <span class="tag-chip active" onclick="toggleTag(this)">Flat</span>
+      <span class="tag-chip" onclick="toggleTag(this)">Folded</span>
+      <span class="tag-chip" onclick="toggleTag(this)">Partial</span>
+      <span class="tag-chip" onclick="toggleTag(this)">Front</span>
+      <span class="tag-chip" onclick="toggleTag(this)">Back</span>
+    </div>
+  </div>
+
+  <!-- 4. Camera Viewfinder -->
+  <div class="viewfinder-container">
+    <video id="videoFeed" autoplay playsinline muted></video>
+    <div class="viewfinder-guide">
+      <div class="guide-label" id="guideLabel">Fit ₹100 inside guide & move slightly</div>
+    </div>
+    <div class="flash-overlay" id="flashOverlay"></div>
+  </div>
+
+  <!-- 5. Burst Action Button -->
+  <button class="capture-btn" id="startBurstBtn" onclick="startBurstCapture()">
+    <span>📸</span> START BURST (10 FRAMES / 3s)
+  </button>
+
+  <!-- 6. Status and Filmstrip -->
+  <div class="card" id="filmstripCard" style="display:none;">
+    <div class="card-title" id="filmstripTitle">Last Captured Burst (10 Frames)</div>
+    <div class="filmstrip" id="filmstrip"></div>
+    <div id="statusMessage" style="font-size: 0.8rem; color: var(--success); font-weight: 700;"></div>
+  </div>
+
+  <!-- 7. Session Stats Progress -->
+  <div class="card">
+    <div class="card-title">Session Collection Counts</div>
+    <table class="stats-table">
+      <thead>
+        <tr><th>Denom</th><th>Train (A)</th><th>Test (B)</th><th>Target</th></tr>
+      </thead>
+      <tbody id="statsBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 8. Printed Collection Protocol -->
+  <details>
+    <summary>📋 Official Collection Protocol (Read Before Collecting)</summary>
+    <div class="protocol-content">
+      <p><strong>Goal:</strong> True phone distribution covering all real-world variations.</p>
+      <ul>
+        <li><strong>Lighting:</strong> 1/3 daylight, 1/3 LED/fluorescent room light, 1/3 warm/dim evening light.</li>
+        <li><strong>Backgrounds:</strong> Wooden desk, bedsheet/fabric, held directly in fingers/hand.</li>
+        <li><strong>Variations:</strong> Front side, back side, folded along middle, crumpled/worn, partial note cut off by frame edge.</li>
+        <li><strong>Distance:</strong> Close-up (filling frame) vs far (note fills 40% of frame with surrounding table).</li>
+        <li><strong>Rule:</strong> Keep Session A (Train) and Session B (Test) completely distinct. Never mix photos between the two.</li>
+      </ul>
+    </div>
+  </details>
+
+  <script>
+    let currentDenom = '100';
+    let currentSessionType = 'train';
+    let sessionId = 'SES_A_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    let videoStream = null;
+    let counts = JSON.parse(localStorage.getItem('notereader_counts') || '{}');
+
+    const video = document.getElementById('videoFeed');
+    const startBtn = document.getElementById('startBurstBtn');
+    const flash = document.getElementById('flashOverlay');
+    const filmstrip = document.getElementById('filmstrip');
+    const filmstripCard = document.getElementById('filmstripCard');
+    const statusMsg = document.getElementById('statusMessage');
+
+    async function initCamera() {
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
+          audio: false
+        });
+        video.srcObject = videoStream;
+      } catch (err) {
+        console.warn('Camera error:', err);
+        document.getElementById('guideLabel').innerText = 'Camera access denied or requires HTTPS';
+        document.getElementById('guideLabel').style.color = '#ef4444';
+      }
+    }
+
+    function selectDenom(d) {
+      currentDenom = d;
+      document.querySelectorAll('.denom-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      const label = d === 'not_a_note' ? 'Keep objects/hand in guide' : `Fit ₹${d} inside guide & move slightly`;
+      document.getElementById('guideLabel').innerText = label;
+    }
+
+    function setSessionType(type) {
+      currentSessionType = type;
+      document.querySelectorAll('.session-btn').forEach(b => b.classList.remove('active'));
+      if (type === 'train') {
+        document.querySelector('.session-btn.train').classList.add('active');
+        sessionId = 'SES_A_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      } else {
+        document.querySelector('.session-btn.test').classList.add('active');
+        sessionId = 'SES_B_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+      }
+      document.getElementById('sessionIdLabel').innerText = sessionId;
+      updateStats();
+    }
+
+    function newSessionId() {
+      const prefix = currentSessionType === 'train' ? 'SES_A_' : 'SES_B_';
+      sessionId = prefix + Math.random().toString(36).substring(2, 6).toUpperCase();
+      document.getElementById('sessionIdLabel').innerText = sessionId;
+    }
+
+    function toggleTag(el) {
+      el.parentElement.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function playBeep(freq = 600) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        osc.frequency.value = freq;
+        osc.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.08);
+      } catch (e) {}
+    }
+
+    async function startBurstCapture() {
+      if (!videoStream) {
+        alert('Camera stream is not active. Please grant camera permission.');
+        return;
+      }
+      startBtn.disabled = true;
+      filmstripCard.style.display = 'block';
+      filmstrip.innerHTML = '';
+      statusMsg.innerText = 'Capturing burst of 10 frames... Slowly move phone';
+
+      const zip = new JSZip();
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+      const ctx = canvas.getContext('2d');
+
+      const tagStrings = Array.from(document.querySelectorAll('.tag-chip.active')).map(t => t.innerText.toLowerCase().replace(/\\s+/g, '_')).join('-');
+      const burstCount = 10;
+      const capturedBlobs = [];
+
+      for (let i = 0; i < burstCount; i++) {
+        startBtn.innerText = `⏳ CAPTURING ${i + 1}/${burstCount}...`;
+        playBeep(700 + i * 40);
+        if (navigator.vibrate) navigator.vibrate(40);
+
+        flash.style.opacity = '0.7';
+        setTimeout(() => { flash.style.opacity = '0'; }, 60);
+
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.90);
+        const base64Data = dataUrl.split(',')[1];
+
+        const imgEl = document.createElement('img');
+        imgEl.src = dataUrl;
+        imgEl.className = 'thumb';
+        filmstrip.appendChild(imgEl);
+
+        const filename = `${currentDenom}_${sessionId}_${Date.now()}_f${i+1}_${tagStrings}.jpg`;
+        zip.file(filename, base64Data, { base64: true });
+
+        await new Promise(r => setTimeout(r, 280));
+      }
+
+      startBtn.innerText = '📦 PACKAGING ZIP...';
+      const zipBlob = await zip.generateAsync({ type: 'blob' });
+      const zipName = `notereader_${currentDenom}_${currentSessionType}_${sessionId}.zip`;
+
+      const dlLink = document.createElement('a');
+      dlLink.href = URL.createObjectURL(zipBlob);
+      dlLink.download = zipName;
+      document.body.appendChild(dlLink);
+      dlLink.click();
+      document.body.removeChild(dlLink);
+
+      // Update counts
+      const key = `${currentDenom}_${currentSessionType}`;
+      counts[key] = (counts[key] || 0) + burstCount;
+      localStorage.setItem('notereader_counts', JSON.stringify(counts));
+
+      statusMsg.innerText = `✅ Exported ${zipName} (${burstCount} frames)`;
+      startBtn.disabled = false;
+      startBtn.innerHTML = '<span>📸</span> START BURST (10 FRAMES / 3s)';
+      updateStats();
+    }
+
+    function updateStats() {
+      const denoms = ['10', '20', '50', '100', '200', '500', '2000', 'not_a_note'];
+      const tbody = document.getElementById('statsBody');
+      tbody.innerHTML = '';
+      denoms.forEach(d => {
+        const trainCnt = counts[`${d}_train`] || 0;
+        const testCnt = counts[`${d}_test`] || 0;
+        const tr = document.createElement('tr');
+        const targetMet = trainCnt >= 20 && testCnt >= 20;
+        tr.innerHTML = `
+          <td><strong>${d === 'not_a_note' ? 'not_a_note' : '₹' + d}</strong></td>
+          <td style="color:${trainCnt >= 20 ? 'var(--success)' : 'var(--text)'};">${trainCnt}</td>
+          <td style="color:${testCnt >= 20 ? 'var(--success)' : 'var(--text)'};">${testCnt}</td>
+          <td>${targetMet ? '✅ Ready' : '40 min (20/20)'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initCamera();
+      document.getElementById('sessionIdLabel').innerText = sessionId;
+      updateStats();
+    });
+  </script>
+</body>
+</html>
